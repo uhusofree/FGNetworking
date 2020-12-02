@@ -50,6 +50,18 @@ public:
 	UFUNCTION(BlueprintPure)
 		int32 GetPing() const;
 
+	UFUNCTION(Server, Unreliable)
+		void Server_SendLocation(const FVector& LocationToSend);
+
+	UFUNCTION(NetMulticast, Unreliable)
+		void Multicast_SendLocation(const FVector& LocationToSend);
+
+	/*UFUNCTION(Server, Unreliable)
+		void Server_SendRotation(const FRotator& RotationToSend);
+
+	UFUNCTION(NetMulticast, Unreliable)
+		void Multicast_SendRotation(const FRotator& RotationToSend);*/
+
 private:
 	void Handle_Accelerate(float Value);
 	void Handle_Turn(float Value);

@@ -58,6 +58,9 @@ void AFGPlayer::Tick(float DeltaSeconds)
 	MovementComponent->ApplyGravity();
 	FrameMovement.AddDelta(GetActorForwardVector() * MovementVelocity * DeltaSeconds);
 	MovementComponent->Move(FrameMovement);
+
+	Server_SendLocation(GetActorLocation());
+	//Server_SendRotation(GetActorRotation());
 }
 
 void AFGPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -79,6 +82,34 @@ int32 AFGPlayer::GetPing() const
 	}
 	return 0;
 }
+
+
+
+//void AFGPlayer::Server_SendRotation_Implementation(const FRotator& RotationToSend)
+//{
+//	Multicast_SendRotation(RotationToSend);
+//}
+//
+//void AFGPlayer::Multicast_SendRotation_Implementation(const FRotator& RotationToSend)
+//{
+//	SetActorRotation(RotationToSend);
+//}
+
+void AFGPlayer::Multicast_SendLocation_Implementation(const FVector& LocationToSend)
+{
+	if (!IsLocallyControlled())
+	{
+		SetActorLocation(LocationToSend);
+	}
+	
+}
+
+
+void AFGPlayer::Server_SendLocation_Implementation(const FVector& LocationToSend)
+{
+	Multicast_SendLocation(LocationToSend);
+}
+
 
 void AFGPlayer::Handle_Accelerate(float Value)
 {
