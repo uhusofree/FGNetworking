@@ -1,34 +1,104 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "FGPlayer.h"
+#include "Components/InputComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Gameframework/SpringArmComponent.h"
+#include "Components/SphereComponent.h"
+#include "Camera/CameraComponent.h"
+#include "Engine/NetDriver.h"
+#include "GameFramework/PlayerState.h"
+#include "FG19Networking/Component/FGMovementComponent.h"
+#include "FG19Networking/FGMovementStatics.h"
 
-// Sets default values
+
 AFGPlayer::AFGPlayer()
 {
- 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
+	RootComponent = CollisionComponent;
 
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	MeshComponent->SetupAttachment(CollisionComponent);
+
+	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+	SpringArmComponent->bInheritYaw = false;
+	SpringArmComponent->SetupAttachment(CollisionComponent);
+
+	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
+	CameraComponent->SetupAttachment(SpringArmComponent);
+
+	MovementComponent = CreateDefaultSubobject<UFGMovementComponent>(TEXT("MovementComponent"));
+
+	SetReplicateMovement(false);
 }
-
-// Called when the game starts or when spawned
 void AFGPlayer::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	MovementComponent->SetUpdatedComponent(CollisionComponent);
 }
 
-// Called every frame
-void AFGPlayer::Tick(float DeltaTime)
+void AFGPlayer::Tick(float DeltaSeconds)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick(DeltaSeconds);
 
+	const float Friction = IsBraking() ? BrakingFriction : DefaultFriction;
+	const float Alpha = FMath::Clamp(FMath::Abs(MovementVelocity / (MaxVelocity * 0.75f)), 0.0f, 1.0f);
+	const float TurnSpeed = FMath::InterpEaseOut(0.0f, TurnSpeedDefault, Alpha, 5.0f);
+	const float MovementDirection = MovementVelocity > 0.0f ? Turn : -Turn;
+
+	Yaw += (MovementDirection * TurnSpeed) * DeltaSeconds;
+	FQuat WantedFacingDirection = FQuat(FVector::UpVector, FMath::DegreesToRadians(Yaw));
+	MovementComponent->SetFacingRotation(WantedFacingDirection);
+
+	FFGFrameMovement FrameMovement = MovementComponent->CreateFrameMovement();
+
+	MovementVelocity += Forward * Acceleration * DeltaSeconds;
+	MovementVelocity = FMath::Clamp(MovementVelocity, -MaxVelocity, MaxVelocity);
+	MovementVelocity *= FMath::Pow(Friction, DeltaSeconds);
+
+	MovementComponent->ApplyGravity();
+	FrameMovement.AddDelta(GetActorForwardVector() * MovementVelocity * DeltaSeconds);
+	MovementComponent->Move(FrameMovement);
 }
 
-// Called to bind functionality to input
 void AFGPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	PlayerInputComponent->BindAxis(TEXT("Accelerate"), this, &AFGPlayer::Handle_Accelerate);
+	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &AFGPlayer::Handle_Turn);
+
+	PlayerInputComponent->BindAction(TEXT("Brake"), IE_Pressed, this, &AFGPlayer::Brake_Pressed);
+	PlayerInputComponent->BindAction(TEXT("Brake"), IE_Released, this, &AFGPlayer::BrakeReleased);
 }
+
+int32 AFGPlayer::GetPing() const
+{
+	if (GetPlayerState())
+	{
+		return static_cast<int32>(GetPlayerState()->GetPing());
+	}
+	return 0;
+}
+
+void AFGPlayer::Handle_Accelerate(float Value)
+{
+	Forward = Value;
+}
+
+void AFGPlayer::Handle_Turn(float Value)
+{
+	Turn = Value;
+}
+
+void AFGPlayer::Brake_Pressed()
+{
+	bBrake = true;
+}
+
+void AFGPlayer::BrakeReleased()
+{
+	bBrake = false;
+}
+
+
 
