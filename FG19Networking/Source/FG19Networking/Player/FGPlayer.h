@@ -56,11 +56,11 @@ public:
 	UFUNCTION(NetMulticast, Unreliable)
 		void Multicast_SendLocation(const FVector& LocationToSend);
 
-	/*UFUNCTION(Server, Unreliable)
+	UFUNCTION(Server, Unreliable)
 		void Server_SendRotation(const FRotator& RotationToSend);
 
 	UFUNCTION(NetMulticast, Unreliable)
-		void Multicast_SendRotation(const FRotator& RotationToSend);*/
+		void Multicast_SendRotation(const FRotator& RotationToSend);
 
 private:
 	void Handle_Accelerate(float Value);
