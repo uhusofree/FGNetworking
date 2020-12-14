@@ -11,6 +11,8 @@ class USpringArmComponent;
 class UFGMovementComponent;
 class UStaticMeshComponent;
 class USphereComponent;
+class UFGPlayerSettings;
+class UFG_NetDebugWidget;
 
 UCLASS()
 class FG19NETWORKING_API AFGPlayer : public APawn
@@ -29,7 +31,10 @@ public:
 
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-	UPROPERTY(EditAnywhere, Category = Movement)
+	UPROPERTY(EditAnywhere, Category = Settings)
+	UFGPlayerSettings* PlayerSettings = nullptr;
+
+	/*UPROPERTY(EditAnywhere, Category = Movement)
 		float Acceleration = 500.0f;
 
 	UPROPERTY(EditAnywhere, Category = Movement, meta = (DisplayName = "TurnSpeed"))
@@ -42,7 +47,7 @@ public:
 		float DefaultFriction = 0.75f;
 
 	UPROPERTY(EditAnywhere, Category = Movement, meta = (ClampMin = 0.0, ClampMax = 1.0))
-		float BrakingFriction = 0.0001f;
+		float BrakingFriction = 0.0001f;*/
 
 
 	UFUNCTION(BlueprintPure)
@@ -50,23 +55,38 @@ public:
 	UFUNCTION(BlueprintPure)
 		int32 GetPing() const;
 
-	UFUNCTION(Server, Unreliable)
-		void Server_SendLocation(const FVector& LocationToSend);
-
-	UFUNCTION(NetMulticast, Unreliable)
-		void Multicast_SendLocation(const FVector& LocationToSend);
+	UPROPERTY(EditAnywhere, Category = Debug)
+	TSubclassOf<UFG_NetDebugWidget> DebugMenuClass;
 
 	UFUNCTION(Server, Unreliable)
-		void Server_SendRotation(const FRotator& RotationToSend);
+	void Server_SendLocation(const FVector& LocationToSend);
 
 	UFUNCTION(NetMulticast, Unreliable)
-		void Multicast_SendRotation(const FRotator& RotationToSend);
+	void Multicast_SendLocation(const FVector& LocationToSend);
+
+	UFUNCTION(Server, Unreliable)
+	void Server_SendRotation(const FRotator& RotationToSend);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_SendRotation(const FRotator& RotationToSend);
+
+	void ShowDebugMenu();
+	void HideDebugMenu();
 
 private:
 	void Handle_Accelerate(float Value);
 	void Handle_Turn(float Value);
 	void Brake_Pressed();
 	void BrakeReleased();
+
+	void Handle_DebugMenuPressed();
+
+	void CreateDebugWidget();
+
+	UPROPERTY(Transient)
+	UFG_NetDebugWidget* DebugMenuInstance = nullptr;
+
+	bool bShowDebugMenu = false;
 
 	float Forward = 0.0f;
 	float Turn = 0.0f;
@@ -90,10 +110,5 @@ private:
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Movement)
 		UFGMovementComponent* MovementComponent;
-
-
-
-
-
 
 };
